@@ -1,0 +1,19 @@
+node:internal/modules/package_json_reader:113
+  const parsed = modulesBinding.readPackageJSON(
+                                ^
+
+Error: Invalid package config /Users/apple/Desktop/Hackathon_club/node_modules/next/dist/compiled/ci-info/package.json.
+    at Object.read (node:internal/modules/package_json_reader:113:33)
+    at _readPackage (node:internal/modules/cjs/loader:482:55)
+    at tryPackage (node:internal/modules/cjs/loader:503:36)
+    at Module._findPath (node:internal/modules/cjs/loader:785:18)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1396:27)
+    at /Users/apple/Desktop/Hackathon_club/node_modules/next/dist/server/require-hook.js:68:36
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1051:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1056:22)
+    at Module._load (node:internal/modules/cjs/loader:1219:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) {
+  code: 'ERR_INVALID_PACKAGE_CONFIG'
+}
+
+Node.js v24.7.0
