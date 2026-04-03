@@ -16,7 +16,7 @@ export default function EditEventPage() {
   const event = mockEvents.find((e) => e.id === eventId);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State from new schema
+  const [imageUrl, setImageUrl] = useState<string>(event?.imageUrl || "");
   const [participationType, setParticipationType] = useState<"Individual" | "Team">(event?.participationType || "Individual");
   const [mode, setMode] = useState<"Online" | "Offline">(event?.mode || "Online");
   const [sponsors, setSponsors] = useState<{ name: string; logoUrl: string }[]>(event?.sponsors || []);
@@ -28,6 +28,16 @@ export default function EditEventPage() {
     newSponsors[index] = { ...newSponsors[index], [field]: value };
     setSponsors(newSponsors);
   };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setImageUrl(previewUrl);
+    }
+  };
+
+  const handleRemoveImage = () => setImageUrl("");
 
   if (!event) return null;
 
@@ -280,16 +290,47 @@ export default function EditEventPage() {
               </div>
             </div>
 
-            <div className="bg-fuchsia-600 rounded-3xl p-6 text-white text-center shadow-lg shadow-fuchsia-200">
-              <div className="p-3 bg-white/20 rounded-2xl w-fit mx-auto mb-4">
-                <FileImage className="h-8 w-8" />
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-900">Cover Image</h3>
+                {imageUrl && (
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveImage}
+                    className="text-xs text-rose-500 font-bold hover:underline"
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
-              <h3 className="font-bold text-lg mb-1">Cover Image</h3>
-              <p className="text-white/70 text-xs mb-4">Change resolution banner for the opportunity.</p>
-              <input type="file" className="hidden" id="cover-upload" />
-              <label htmlFor="cover-upload" className="block w-full bg-white text-fuchsia-600 font-bold py-3 rounded-xl cursor-pointer hover:bg-fuchsia-50 transition-colors">
-                Change Image
-              </label>
+              
+              {imageUrl ? (
+                <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 group border border-slate-100">
+                  <img src={imageUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <label htmlFor="cover-upload" className="cursor-pointer bg-white text-slate-900 px-4 py-2 rounded-xl font-bold text-sm">
+                      Replace Image
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="aspect-video rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center mb-4 bg-slate-50/50">
+                  <div className="p-3 bg-slate-100 rounded-xl mb-2">
+                    <FileImage className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">No cover image uploaded</p>
+                </div>
+              )}
+              
+              <input type="file" className="hidden" id="cover-upload" onChange={handleImageUpload} accept="image/*" />
+              {!imageUrl && (
+                <label htmlFor="cover-upload" className="block w-full bg-fuchsia-600 text-white text-center font-bold py-3 rounded-xl cursor-pointer hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-600/20 transition-all">
+                  Upload Image
+                </label>
+              )}
+              {imageUrl && (
+                <p className="text-[10px] text-center text-slate-400 font-medium">Recommended resolution: 1920x1080px</p>
+              )}
             </div>
           </div>
         </div>

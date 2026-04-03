@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: "Admin User",
         email: "admin@hackathonclub.com",
         role: "admin",
+        globalRole: "President",
       });
     } else {
       setUser({
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: "John Doe",
         email: "john@example.com",
         role: "participant",
+        globalRole: "Member",
       });
     }
   };

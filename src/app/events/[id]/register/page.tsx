@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, User, Mail, Link as LinkIcon, Users, Phone, ShieldCheck, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, User, Mail, Link as LinkIcon, Users, Phone, ShieldCheck, Plus, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { mockEvents } from "@/lib/mockData";
 import { Button } from "@/components/ui/Button";
@@ -16,7 +16,7 @@ export default function EventRegistrationPage() {
 
   const event = mockEvents.find((e) => e.id === eventId);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "failed">("idle");
   
   // Team registration state
   const isTeamEvent = event?.participationType === "Team";
@@ -27,8 +27,7 @@ export default function EventRegistrationPage() {
 
   const handleTeamSizeChange = (val: number) => {
     setTeamSize(val);
-    // Adjust members array length
-    const memberCount = val - 1; // excluding leader
+    const memberCount = val - 1;
     const newMembers = [...members];
     if (newMembers.length < memberCount) {
       for (let i = newMembers.length; i < memberCount; i++) {
@@ -43,29 +42,67 @@ export default function EventRegistrationPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setPaymentStatus("processing");
+
+    // Simulate payment gateway redirect and callback
     setTimeout(() => {
-      setIsSubmitting(false);
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(`/dashboard`);
-      }, 2000);
-    }, 1500);
+      // 90% success rate for simulation
+      const isSuccessful = Math.random() > 0.1;
+
+      if (isSuccessful) {
+        setPaymentStatus("success");
+        setIsSubmitting(false);
+        // In a real app, the registration would be created on the backend 
+        // after the payment callback.
+        setTimeout(() => {
+          router.push(`/dashboard`);
+        }, 3000);
+      } else {
+        setPaymentStatus("failed");
+        setIsSubmitting(false);
+      }
+    }, 2000);
   };
 
-  if (success) {
+  if (paymentStatus === "success") {
     return (
       <div className="min-h-[80vh] flex items-center justify-center container mx-auto px-4">
         <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-2xl max-w-lg w-full text-center border border-emerald-100 animate-in zoom-in-95 duration-300">
            <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path></svg>
            </div>
-           <h2 className="text-3xl font-black text-slate-900 mb-3">Registration Successful!</h2>
-           <p className="text-slate-500 font-medium mb-8">You are officially registered for {event.title}. {isTeamEvent ? "Your team details have been saved." : "Let's build something amazing!"}</p>
+           <h2 className="text-3xl font-black text-slate-900 mb-3">Payment Successful!</h2>
+           <p className="text-slate-500 font-medium mb-8">Your registration for <strong>{event.title}</strong> is confirmed. {isTeamEvent ? "Your team details have been saved." : "Welcome aboard!"}</p>
            <div className="flex flex-col items-center gap-2">
              <div className="h-1 w-24 bg-slate-100 rounded-full overflow-hidden">
                <div className="h-full bg-emerald-500 animate-progress" />
              </div>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Redirecting to Dashboard</p>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentStatus === "failed") {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center container mx-auto px-4">
+        <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-2xl max-w-lg w-full text-center border border-rose-100 animate-in zoom-in-95 duration-300">
+           <div className="w-24 h-24 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+             <XCircle className="w-12 h-12" />
+           </div>
+           <h2 className="text-3xl font-black text-slate-900 mb-3">Payment Failed</h2>
+           <p className="text-slate-500 font-medium mb-8">We couldn't process your payment. Please retry to complete your registration for {event.title}.</p>
+           <div className="flex flex-col gap-3">
+             <Button 
+               onClick={() => setPaymentStatus("idle")}
+               className="bg-slate-900 hover:bg-slate-800 text-white h-14 rounded-2xl font-bold w-full"
+             >
+               Retry Payment
+             </Button>
+             <Link href={`/events/${eventId}`} className="text-slate-400 text-sm font-bold hover:text-slate-600 transition-colors">
+               Cancel and go back
+             </Link>
            </div>
         </div>
       </div>
@@ -194,24 +231,29 @@ export default function EventRegistrationPage() {
 
             <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-1 text-center md:text-left">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Registration Fee</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total to Pay</p>
                 <div className="flex items-center gap-2">
                   <p className="text-3xl font-black text-slate-900">{event.feeType === "Paid" ? `₹${event.feeAmount}` : "FREE"}</p>
-                  {event.feeType === "Paid" && <Badge className="bg-emerald-500 text-white border-none px-2 rounded-lg">Secured</Badge>}
+                  {event.feeType === "Paid" && <Badge className="bg-emerald-500 text-white border-none px-2 rounded-lg">Pay Securely</Badge>}
                 </div>
               </div>
               <Button type="submit" size="lg" disabled={isSubmitting} className={cn(
                 "w-full md:w-auto h-16 md:px-12 rounded-2xl text-lg font-bold shadow-2xl transition-all",
                 isTeamEvent ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20" : "bg-fuchsia-600 hover:bg-fuchsia-700 shadow-fuchsia-500/20"
               )}>
-                {isSubmitting ? "Processing..." : "Submit Registration"}
+                {isSubmitting ? (
+                   <span className="flex items-center gap-2">
+                     <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                     Redirecting to Payment...
+                   </span>
+                ) : event.feeType === "Paid" ? "Pay & Register" : "Register Now"}
               </Button>
             </div>
           </form>
         </div>
         
         <p className="text-center text-slate-400 text-xs mt-8 px-12">
-          By submitting this form, you agree to the event rules and our terms of service. Team data will be shared with the event organizer, {event.organizationName}.
+          By submitting this form, you agree to the event rules and our terms of service. Registration is only complete after successful payment processing.
         </p>
       </div>
     </div>

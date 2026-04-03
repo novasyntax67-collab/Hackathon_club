@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, subDays, isAfter, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isSameMonth } from "date-fns";
 import {
   Calendar, CheckCircle2, ChevronDown,
@@ -10,7 +10,7 @@ import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
-import { mockEvents, mockRegistrations, mockUsers } from "@/lib/mockData";
+import { getEvents, getRegistrations, getUsers, getCalendarEvents, saveCalendarEvent, deleteCalendarEvent, type CalendarEvent } from "@/lib/storage";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -26,41 +26,22 @@ export default function AdminDashboardPage() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
   const [reminderInput, setReminderInput] = useState("");
 
-  const [schedule, setSchedule] = useState(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+  const [events, setEvents] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [schedule, setSchedule] = useState<CalendarEvent[]>([]);
 
-    return [
-      {
-        id: "ev_1",
-        dateValue: new Date(currentYear, currentMonth, 3).toISOString(),
-        title: "Panel Discussion",
-        subtitle: "Tech Beyond 2024",
-        category: "Technology",
-        time: "10:00 AM - 12:00 PM",
-        color: "blue"
-      },
-      {
-        id: "ev_2",
-        dateValue: new Date(currentYear, currentMonth, 5).toISOString(),
-        title: "Live Concert",
-        subtitle: "Echo Beats Festival",
-        category: "Music",
-        time: "6:00 PM - 11:00 PM",
-        color: "pink"
-      },
-      {
-        id: "ev_3",
-        dateValue: new Date(currentYear, currentMonth, 23).toISOString(),
-        title: "Fashion Showcase",
-        subtitle: "Spring Trends Runway Show",
-        category: "Fashion",
-        time: "3:00 PM - 5:00 PM",
-        color: "blue"
-      }
-    ];
-  });
+  useEffect(() => {
+    const loadData = () => {
+      setEvents(getEvents());
+      setRegistrations(getRegistrations());
+      setUsers(getUsers());
+      setSchedule(getCalendarEvents());
+    };
+    loadData();
+    window.addEventListener("storage-update", loadData);
+    return () => window.removeEventListener("storage-update", loadData);
+  }, []);
 
   const handlePrevMonth = () => setCurrentDate(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentDate(prev => addMonths(prev, 1));
@@ -79,22 +60,22 @@ export default function AdminDashboardPage() {
   const calendarDays = [...prevMonthDays, ...currentMonthDays];
 
   const visibleEvents = schedule
-    .filter(ev => isSameMonth(new Date(ev.dateValue), currentDate))
-    .sort((a, b) => new Date(a.dateValue).getTime() - new Date(b.dateValue).getTime());
+    .filter(ev => isSameMonth(new Date(ev.date), currentDate))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Top Metrics
-  const upcomingEventsCount = mockEvents.filter(e => e.status === "Upcoming").length;
-  const pastEventsCount = mockEvents.filter(e => e.status === "Completed").length;
-  const totalRegistrations = mockRegistrations.length;
+  const upcomingEventsCount = events.filter(e => e.status === "Upcoming").length;
+  const pastEventsCount = events.filter(e => e.status === "Completed").length;
+  const totalRegistrations = registrations.length;
 
   // Global Event Filter options
-  const eventOptions = [{ id: "All", title: "All Events" }, ...mockEvents];
+  const eventOptions = [{ id: "All", title: "All Events" }, ...events];
 
   // Pie Chart Data (Registrations per event)
   const pieData = useMemo(() => {
     // Mock filter logic
-    return mockEvents.map(event => {
-      let count = mockRegistrations.filter(r => r.eventId === event.id).length;
+    return events.map(event => {
+      let count = registrations.filter(r => r.eventId === event.id).length;
       // Pretend to apply filter math for MVP
       if (regFilter === "Last 3 Days") count = Math.max(0, count - 1);
       if (regFilter === "This Week") count = Math.max(0, count);
@@ -131,21 +112,21 @@ export default function AdminDashboardPage() {
   }, [revFilter, selectedEventId]);
 
   // Popular Events (Top 5)
-  const popularEvents = [...mockEvents].map(event => {
-    const regs = mockRegistrations.filter(r => r.eventId === event.id).length;
+  const popularEvents = [...events].map(event => {
+    const regs = registrations.filter(r => r.eventId === event.id).length;
     return { ...event, regs };
   }).sort((a, b) => b.regs - a.regs).slice(0, 5);
   const maxRegs = Math.max(...popularEvents.map(e => e.regs), 1);
 
   // Unchanged sections mock data
-  const recentBookings = mockRegistrations.map(r => {
-    const user = mockUsers.find(u => u.id === r.userId);
-    const event = mockEvents.find(e => e.id === r.eventId);
+  const recentBookings = registrations.map(r => {
+    const user = users.find(u => u.id === r.userId);
+    const event = events.find(e => e.id === r.eventId);
     return { ...r, user, event };
   }).slice(0, 5);
 
-  const ongoingEvent = mockEvents.find(e => e.status === "Live") || mockEvents[0];
-  const nextUpcomingEvent = mockEvents.find(e => e.status === "Upcoming") || mockEvents[0];
+  const ongoingEvent = events.find(e => e.status === "Live") || events[0];
+  const nextUpcomingEvent = events.find(e => e.status === "Upcoming") || events[0];
 
   // Calendar Logic
   const handleDateClick = (date: Date) => {
@@ -154,21 +135,25 @@ export default function AdminDashboardPage() {
 
   const addReminder = () => {
     if (!reminderInput.trim()) return;
-    const newEvent = {
-      id: `rem_${Date.now()}`,
-      dateValue: selectedCalendarDate.toISOString(),
+    const newEvent: CalendarEvent = {
+      id: `ev-${Date.now()}`,
+      date: selectedCalendarDate.toISOString(),
       title: reminderInput,
-      subtitle: "Custom Reminder",
-      category: "Personal reminder",
+      subtitle: "Admin Reminder",
+      description: reminderInput,
+      type: "Reminder",
+      category: "Work",
       time: "All Day",
       color: "blue"
     };
+    saveCalendarEvent(newEvent);
     setSchedule(prev => [...prev, newEvent]);
     setReminderInput("");
   };
 
   const removeEvent = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    deleteCalendarEvent(id);
     setSchedule(prev => prev.filter(ev => ev.id !== id));
   };
 
@@ -456,7 +441,6 @@ export default function AdminDashboardPage() {
                       <th className="pb-3 px-2">Name</th>
                       <th className="pb-3 px-2">Event</th>
                       <th className="pb-3 px-2">Amount</th>
-                      <th className="pb-3 px-2">Status</th>
                     </tr>
                   </thead>
                   <tbody className="text-[12px] text-slate-600 font-medium">
@@ -471,11 +455,6 @@ export default function AdminDashboardPage() {
                           </div>
                         </td>
                         <td className="py-3 px-2 font-bold">${reg.event?.feeAmount || 0}</td>
-                        <td className="py-3 px-2">
-                          {reg.paymentStatus === "Paid" && <span className="bg-[#ffeaf2] text-[#ef3a72] px-2.5 py-0.5 rounded-full text-[10px] font-bold">Confirmed</span>}
-                          {reg.paymentStatus === "Pending" && <span className="bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Pending</span>}
-                          {reg.paymentStatus === "Not Required" && <span className="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Free</span>}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -521,7 +500,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <Link href={`/events/${ongoingEvent.id}`}>
                         <button className="bg-emerald-500 hover:bg-emerald-600 transition-colors text-white text-[13px] font-bold px-5 py-2.5 rounded-full shadow-sm">
-                          Ongoing
+                          View Details
                         </button>
                       </Link>
                     </div>
@@ -608,7 +587,7 @@ export default function AdminDashboardPage() {
                 <div className="text-slate-600 font-medium mb-2">Sa</div>
 
                 {calendarDays.map((d, i) => {
-                  const isEvent = d.isCurrentMonth && schedule.some(ev => isSameDay(new Date(ev.dateValue), d.date));
+                  const isEvent = d.isCurrentMonth && schedule.some(ev => isSameDay(new Date(ev.date), d.date));
                   const isSelected = d.isCurrentMonth && isSameDay(selectedCalendarDate, d.date);
                   return (
                     <div key={i} onClick={() => d.isCurrentMonth && handleDateClick(d.date)} className="flex flex-col items-center relative h-10 w-full cursor-pointer group">
@@ -636,8 +615,8 @@ export default function AdminDashboardPage() {
                   return (
                     <div key={ev.id} className={cn("rounded-[20px] p-3 flex gap-4 border border-slate-50/50 group relative", bgClass)}>
                       <div className={cn("w-14 h-[72px] rounded-[14px] flex flex-col items-center justify-center shrink-0 shadow-sm", dateBg)}>
-                        <span className="text-[22px] font-bold text-white leading-none mb-0.5">{format(new Date(ev.dateValue), 'd')}</span>
-                        <span className="text-[12px] font-medium text-white/90">{format(new Date(ev.dateValue), 'EEE')}</span>
+                        <span className="text-[22px] font-bold text-white leading-none mb-0.5">{format(new Date(ev.date), 'd')}</span>
+                        <span className="text-[12px] font-medium text-white/90">{format(new Date(ev.date), 'EEE')}</span>
                       </div>
                       <div className="flex flex-col justify-center flex-1">
                         <div className="flex justify-between items-start">

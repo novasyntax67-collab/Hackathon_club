@@ -46,9 +46,13 @@ export default function EventDetailsPage() {
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col">
       {/* Dynamic Header / Hero */}
-      <div className="relative h-[480px] w-full overflow-hidden shrink-0">
-        <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover scale-105 blur-[2px] opacity-40 absolute inset-0 transition-transform duration-1000" />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-slate-900/90 to-[#0f172a]" />
+    <div className="relative h-[560px] w-full overflow-hidden shrink-0">
+        <img 
+          src={event.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=2000"} 
+          alt={event.title} 
+          className="w-full h-full object-cover absolute inset-0"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
         
         <div className="absolute inset-0 flex flex-col">
           <div className="container mx-auto px-6 h-full flex flex-col justify-end pb-12">

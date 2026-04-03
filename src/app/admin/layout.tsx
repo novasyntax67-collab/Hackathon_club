@@ -1,23 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, redirect } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CopySlash, LayoutDashboard, CalendarDays, Users, LogOut, Ticket, TrophyIcon, Settings, Bell, Search, MessageSquare, MessageCircle, Image as ImageIcon, Menu, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { initStorage } from "@/lib/storage";
+import { ChevronLeft } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!user || user.role !== "admin") {
-      redirect("/");
-    }
-  }, [user]);
+    setMounted(true);
+    initStorage();
+  }, []);
 
+  useEffect(() => {
+    if (mounted && (!user || user.role !== "admin")) {
+      router.push("/");
+    }
+  }, [user, mounted, router]);
+
+  if (!mounted) return null;
   if (!user || user.role !== "admin") return null;
 
   const links = [
@@ -27,7 +37,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin/events", label: "Events", icon: TrophyIcon },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/gallery", label: "Gallery", icon: ImageIcon },
-    { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
     { href: "/admin/discussions", label: "Discussions", icon: MessageCircle },
   ];
 
@@ -118,7 +127,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Dynamic Header */}
         <header className="h-[70px] bg-[#f8f9fb]/80 backdrop-blur-md flex items-center justify-between px-8 shrink-0 relative z-50 w-full gap-8 border-b border-transparent">
           <div className="flex items-center gap-4">
-            <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.3em]">{pathname.split('/')[2] || 'Home'}</span>
+            <button 
+              onClick={() => router.back()} 
+              className="h-9 w-9 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-xl transition-all hover:bg-slate-50 shadow-sm"
+              title="Go Back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                {pathname === '/admin' ? 'Dashboard' : pathname.split('/').slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' / ')}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-6 justify-end flex-1">
